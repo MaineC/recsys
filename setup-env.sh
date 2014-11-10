@@ -15,12 +15,10 @@ mkdir -p demo/data
 mv ml-10m.zip demo/data
 unzip demo/data/ml-10m.zip -d demo/data/ml-10m
 
-# put kibana on top
-wget https://download.elasticsearch.org/kibana/kibana/kibana-3.1.1.zip
-unzip kibana-3.1.1.zip
-rm kibana-3.1.1.zip
-mv kibana-3.1.1 ~/public_html/kibana
-
+wget https://download.elasticsearch.org/kibana/kibana/kibana-4.0.0-BETA1.1.zip
+mkdir -p demo/kibana
+mv kibana-4.0.0-BETA1.1.zip demo/kibana
+unzip demo/kibana/kibana-4.0.0-BETA1.1.zip
 
 # start elasticsearch
 ./demo/es/elasticsearch/elasticsearch-1.3.4/bin/elasticsearch -f
