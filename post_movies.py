@@ -239,22 +239,27 @@ if __name__ == "__main__":
 
         Note that the 'users' index uses nested documents to store the movies
         rated per user. You will need to specify the nested path in your
-        queries, e.g.
+        queries, e.g.:
 
-            GET users/_search?search_type=count
-            {
-              "query": { "nested": {
-                              "path": "Ratings",
-                              "query": { "term": {
-                                              "Ratings.MovieID": {
-                                              "value": "953"}}}}},
-              "aggs": { "Ratings" : {
-                              "nested":{"path": "Ratings" },
-                              "aggs"  :{"Title": {
-                                          "significant_terms":{
-                                                "field" : "Ratings.Title.raw"
-            }}}}}}
-    """
+        GET users/_search?search_type=count
+        {
+          "query": {
+            "nested": {
+              "path": "Ratings",
+              "query": {
+                "bool": {"must" : [
+                        {"range": {"Ratings.Rating": {"gte": 4}}},
+                        {"match_phrase": {"Ratings.Title": "Planet Terror"}} ]
+            }}}},
+          "aggs": {
+            "Ratings" : {
+                "nested": { "path": "Ratings"},
+                "aggs"  : { "Title" : {
+                    "significant_terms":{"field" : "Ratings.Title.raw"}}}}}}
+
+        to run a significant terms aggregation on movies rated by users who 
+        rated "Planet Terror" a "4" ("good") or better.
+        """
     args = cmdl_args()
 
     conn = ES('http://127.0.0.1:9200', bulker_class=models.ListBulker)
