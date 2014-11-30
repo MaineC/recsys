@@ -152,10 +152,10 @@ def index(conn, datadir, tag_names, qlen=50, lines_per_bulk=1000):
 
                 try:    cnty = json.dumps(cnt.lines_with_idx(idx)[0][1],
                                                             encoding="latin1")
-                except: cnty = ""
+                except: cnty = '""'
                 try:    drcr = json.dumps(drc.lines_with_idx(idx)[0][2],
                                                             encoding='latin1')
-                except: drcr = ""
+                except: drcr = '""'
                 acts = json.dumps([ a[2] for a in act.lines_with_idx(idx) ],
                                                             encoding='latin1')
                 gens = json.dumps([ a[1] for a in gen.lines_with_idx(idx) ],
