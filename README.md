@@ -18,15 +18,15 @@ Takes care of setting up an environment that can be used to index movielens data
 post_movies.py
 ===============
 
-usage: post_movies.py [-h] [--lens lens] [--clear clearance] [--stop clearonly]
-
-Parse movielens formatted information and post message therein to a running elasticsearch instance.
-
-optional arguments:
-  -h, --help         show this help message and exit
-  --lens lens        Path to movielens directory in local filesystem.
-  --clear clearance  Set to "true" to clear the existing index before re-indexing.
-  --stop clearonly   Only clear index, do not add more documents.
+    usage: post_movies.py [-h] [--lens lens] [--clear clearance] [--stop clearonly]
+    
+    Parse movielens formatted information and post message therein to a running elasticsearch instance.
+    
+    optional arguments:
+    -h, --help         show this help message and exit
+    --lens lens        Path to movielens directory in local filesystem.
+    --clear clearance  Set to "true" to clear the existing index before re-indexing.
+    --stop clearonly   Only clear index, do not add more documents.
   
 Index names used:
 
@@ -37,12 +37,12 @@ Index names used:
 post_movie_details.py
 =====================
   
-usage: post_movie_details.py [-h] [--datadir datadir] [--clear clearance] [--stop clearonly]
-
-Parse hetrec formatted information and post details therein to a running elasticsearch instance. Index used: movie_details
-
-optional arguments:
-  -h, --help         show this help message and exit
-  --datadir datadir  Path to data directory in local filesystem.
-  --clear clearance  Set to "true" to clear the existing index before re-indexing.
-  --stop clearonly   Only clear index, do not add more documents.
+    usage: post_movie_details.py [-h] [--datadir datadir] [--clear clearance] [--stop clearonly]
+    
+    Parse hetrec formatted information and post details therein to a running elasticsearch instance. Index used:  movie_details
+    
+    optional arguments:
+    -h, --help         show this help message and exit
+    --datadir datadir  Path to data directory in local filesystem.
+    --clear clearance  Set to "true" to clear the existing index before re-indexing.
+    --stop clearonly   Only clear index, do not add more documents.
