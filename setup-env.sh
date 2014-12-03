@@ -1,13 +1,13 @@
 #!/bin/bash
 
 #setup ES
-wget https://download.elasticsearch.org/elasticsearch/elasticsearch/elasticsearch-1.3.4.zip
+wget https://download.elasticsearch.org/elasticsearch/elasticsearch/elasticsearch-1.4.1.zip
 mkdir -p demo/es
-mv elasticsearch-1.3.4.zip demo/es
-unzip demo/es/elasticsearch-1.3.4.zip -d demo/es/elasticsearch
+mv elasticsearch-1.4.1.zip demo/es
+unzip demo/es/elasticsearch-1.4.1.zip -d demo/es/elasticsearch
 
 # install marvel for sense into elasticsearch
-./demo/es/elasticsearch/elasticsearch-1.3.4/bin/plugin -i elasticsearch/marvel/latest
+./demo/es/elasticsearch/elasticsearch-1.4.1/bin/plugin -i elasticsearch/marvel/latest
 
 # deal with movielens data
 wget http://files.grouplens.org/datasets/movielens/ml-10m.zip
@@ -27,4 +27,7 @@ mv kibana-4.0.0-BETA1.1.zip demo/kibana
 unzip demo/kibana/kibana-4.0.0-BETA1.1.zip
 
 # start elasticsearch
-./demo/es/elasticsearch/elasticsearch-1.3.4/bin/elasticsearch -f
+./demo/es/elasticsearch/elasticsearch-1.4.1/bin/elasticsearch
+
+# command to start kibana
+#./demo/kibana/kibana-4.0.0-BETA1.1/bin/kibana
