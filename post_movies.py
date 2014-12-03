@@ -86,6 +86,8 @@ def parse(fname, field_types, custom_append=None):
                 if field_types[i] == "Genres":
                     g   = fields[i].split("|")
                     ret = ret + '"Genres":["%s"],' % '","'.join(g)
+                elif field_types[i] == "Timestamp":
+                    ret = ret + '"%s":%s000,' % (field_types[i], val)
                 else:
                     ret = ret + '"%s":%s,' % (field_types[i], json.dumps(val))
             rd = rd + len(line)
