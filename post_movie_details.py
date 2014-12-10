@@ -17,7 +17,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from pyes import *
+import elasticsearch
 
 import argparse
 import sys
@@ -29,24 +29,23 @@ from threading import Thread
 from Queue import Queue
 
 
-def index_writer(con, q, bulk):
+def index_writer(es, q, bulk):
     """Reads data tuple from queue
         (documents-buf, line-num, bytes-read, bytes-total),
        writes documents to elasticsearch, and prints progress. Function is
        intended to run in a separate thread.
 
        Arguments:
-       conn    -- pyes 'es' instance to index data into
-       q       -- Queue instance to read from
+       es    -- elasticsearch connection instance to index data into
+       q     -- Queue instance to read from
     """
     while True:
         data = q.get()
         if data == "quit":
-            conn.bulker.flush_bulk(forced=True)
             break
         buf, lines, read, total = data
         try:
-            conn.index_raw_bulk("", buf)
+            es.bulk(buf)
             if read:
                 sys.stdout.write("\r   %s %% done (%s of %s KiB, %s documents)"
                      % (read*100/total, read / 1024, total / 1024, lines))
@@ -111,12 +110,12 @@ class index_file(file):
         return ret
 
 
-def index(conn, datadir, tag_names, qlen=50, lines_per_bulk=1000):
+def index(es, datadir, tag_names, qlen=50, lines_per_bulk=1000):
     """Parse hetrec data set and write the result JSON dicts to
         elastisearch in a separate thread.
 
        Arguments:
-       conn        -- pyes 'es' instance to index data into
+       es        -- pyes 'es' instance to index data into
        fname       -- data directory
 
        Keyword arguments:
@@ -133,8 +132,7 @@ def index(conn, datadir, tag_names, qlen=50, lines_per_bulk=1000):
     buf     = ""
     header = '{"index": {"_index": "movie_details", "_type": "movie_detail"'
     q = Queue(maxsize=qlen)
-    conn.bulk_size = 1
-    trd = Thread(target=index_writer, args=(conn, q, lines_per_bulk))
+    trd = Thread(target=index_writer, args=(es, q, lines_per_bulk))
     trd.start()
 
     movie_fn  = os.path.join(datadir, "movies.dat")
@@ -218,7 +216,7 @@ def cmdl_args():
                  + ' and post message therein to a running elasticsearch'
                  + ' instance.')
     parser.add_argument('--datadir', metavar='datadir', dest='datadir',
-        help='Path to data directory in local filesystem.')
+            default=".", help='Path to data directory in local filesystem.')
     parser.add_argument('--clear', metavar='clearance', dest='clear',
         help='Set to "true" to clear the existing index before re-indexing.')
     parser.add_argument('--stop', metavar='clearonly', dest='clearonly',
@@ -254,21 +252,18 @@ if __name__ == "__main__":
         }
     """
     args = cmdl_args()
-    conn = ES('http://127.0.0.1:9200', bulker_class=models.ListBulker)
+    es = elasticsearch.Elasticsearch()
 
     if args.clear == 'true':
-        try:
-            conn.indices.delete_index('movie_details')
-        except:
-            pass
-        conn.indices.create_index('movie_details')
+        es.indices.delete(index='movie_details', ignore=404)
         if args.clearonly == 'true':
             sys.exit()
+    es.indices.create(index='movie_details', ignore=400)
 
     sys.stdout.write("Parsing tags..."); sys.stdout.flush()
     tags, skipped = parse_tags(args.datadir, "tags.dat")
     sys.stdout.write("Done, skipped %s lines.\n" % (len(skipped) - 1))
 
     sys.stdout.write("Parsing + Indexing movie details")
-    index(conn, args.datadir, tags)
+    index(es, args.datadir, tags)
 

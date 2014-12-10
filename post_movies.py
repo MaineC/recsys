@@ -20,7 +20,7 @@
 # under the License.
 
 from pprint import pprint
-from pyes import *
+import elasticsearch
 
 import argparse
 import string
@@ -95,7 +95,7 @@ def parse(fname, field_types, custom_append=None):
             yield ret[:-1] + '}', rd, sz
 
 
-def index_writer(con, q, index, doctype):
+def index_writer(es, q, index, doctype):
     """Reads data tuple from queue
         (start-document-num, end-document-num, documents-buf,
             bytes-read, bytes-total),
@@ -103,7 +103,7 @@ def index_writer(con, q, index, doctype):
        intended to run in a separate thread.
 
        Arguments:
-       conn    -- pyes 'es' instance to index data into
+       es      -- elasticsearch client instance to index data into
        q       -- Queue instance to read from
        index   -- Elasticsearch index
        doctype -- Elasticsearch doctype
@@ -111,11 +111,10 @@ def index_writer(con, q, index, doctype):
     while True:
         data = q.get()
         if data == "quit":
-            conn.bulker.flush_bulk(forced=True)
             break
         c_start, counter, buf, read, total = data
         try:
-            conn.index_raw_bulk("", buf)
+            es.bulk(buf)
             if read:
                 sys.stdout.write("\r   %s %% done (%s of %s KiB, %s documents)"
                      % (read*100/total, read / 1024, total / 1024, counter))
@@ -126,13 +125,13 @@ def index_writer(con, q, index, doctype):
         q.task_done()
 
 
-def index_file(conn, fname, field_types, index, doctype,
+def index_file(es, fname, field_types, index, doctype,
                 parse_append_cb=None, qlen=50, lines_per_bulk=10000):
     """Parse a movielens data file and write the result JSON dicts to
         elastisearch in a separate thread.
 
        Arguments:
-       conn        -- pyes 'es' instance to index data into
+       es        -- pyes 'es' instance to index data into
        fname       -- data file name to parse
        field_types -- data file field types, see parse() documentation
        index       -- Elasticsearch index
@@ -144,8 +143,8 @@ def index_file(conn, fname, field_types, index, doctype,
        lines_per_bulk  -- Number of lines per bulk write
     """
     q = Queue(maxsize=qlen)
-    conn.bulk_size = 1
-    t = Thread(target=index_writer, args=(conn, q, index, doctype))
+    es.bulk_size = 1
+    t = Thread(target=index_writer, args=(es, q, index, doctype))
     t.start()
 
     counter = 0
@@ -168,30 +167,29 @@ def index_file(conn, fname, field_types, index, doctype,
     print ""
 
 
-def delete_indices(conn):
-    """Delete indices, create mappings.
+def delete_indices(es):
+    """Delete indices.
 
        Arguments
-       conn -- ES connection object
+       es -- ES client instance
     """
-    try:
-        conn.indices.delete_index('movies')
-        conn.indices.delete_index('tags')
-        conn.indices.delete_index('ratings')
-        conn.indices.delete_index('users')
-    except:
-        pass
+    print "Deleting indices."
+    es.indices.delete(index='movies', ignore=404)
+    es.indices.delete(index='tags', ignore=404)
+    es.indices.delete(index='ratings', ignore=404)
+    es.indices.delete(index='users', ignore=404)
 
-def reset_indices(conn):
+def create_mappings(es):
     """Re-create indices, create mappings.
 
        Arguments
-       conn -- ES connection object
+       es -- ES client instance
     """
-    conn.indices.create_index('movies')
-    conn.indices.create_index('tags')
-    conn.indices.create_index('ratings')
-    conn.indices.create_index('users')
+    print "Creating indices and mappings."
+    es.indices.create(index='movies', ignore=400)
+    es.indices.create(index='tags', ignore=400)
+    es.indices.create(index='ratings', ignore=400)
+    es.indices.create(index='users', ignore=400)
 
     ts_mapping = {     'Timestamp' : { 'boost': 1.0, 'type': 'date'} }
     ratings_mapping = {'Timestamp' : { 'boost': 1.0, 'type': 'date'}, 
@@ -211,10 +209,12 @@ def reset_indices(conn):
                                                   "raw" : {
                                                     "type": "string",
                                                     "index": "not_analyzed"}}}}}}
-    conn.indices.put_mapping("movie", {'properties': ts_mapping}, ['movies'])
-    conn.indices.put_mapping("rating", {'properties': ratings_mapping}, ['ratings'])
-    conn.indices.put_mapping("tag", {'properties': ts_mapping}, ['tags'])
-    conn.indices.put_mapping("user", {'properties': users_mapping}, ['users'])
+    def put(es, doc, mappings):
+        es.indices.put_mapping(doc, {doc: {'properties':mappings}}, doc+'s')
+    put(es, "movie", ts_mapping)
+    put(es, "rating", ratings_mapping)
+    put(es, "tag", ts_mapping)
+    put(es, "user", users_mapping)
 
 
 def cmdl_args():
@@ -227,7 +227,7 @@ def cmdl_args():
                 description='Parse movielens formatted information'
                  + ' and post message therein to a running elasticsearch'
                  + ' instance.')
-    parser.add_argument('--lens', metavar='lens', dest='lens',
+    parser.add_argument('--lens', metavar='lens', dest='lens', default='.',
         help='Path to movielens directory in local filesystem.')
     parser.add_argument('--clear', metavar='clearance', dest='clear',
         help='Set to "true" to clear the existing index before re-indexing.')
@@ -270,14 +270,14 @@ if __name__ == "__main__":
         """
     args = cmdl_args()
 
-    conn = ES('http://127.0.0.1:9201', bulker_class=models.ListBulker)
+    es = elasticsearch.Elasticsearch()
 
     if args.clear == 'true':
-        delete_indices(conn)
+        delete_indices(es)
         if args.clearonly == 'true':
             sys.exit()
 
-    reset_indices(conn)
+    create_mappings(es)
 
     # Generate "users" index w/ movies rated per user
     #  This index is generated on the fly when parsing 'ratings.dat'
@@ -289,10 +289,10 @@ if __name__ == "__main__":
     users_header = '{"index": {"_index": "users", "_type": "user"}}'
     users_bulk = 500
     users_q = Queue(50)
-    users_conn = ES('http://127.0.0.1:9201', bulker_class=models.ListBulker)
-    users_conn.bulk_size = 1
+    users_es = elasticsearch.Elasticsearch()
+    users_es.bulk_size = 1
     users_t = Thread(target=index_writer,
-                     args=(users_conn, users_q, "users", "user"))
+                     args=(users_es, users_q, "users", "user"))
     users_t.start()
 
     # Extract movie titles when parsing 'movies.dat'
@@ -322,15 +322,15 @@ if __name__ == "__main__":
         return '"Title":%s ' % titles[fields[1]]
 
     # Parse movies, ratings, and tags
-    index_file(conn, os.path.join(args.lens, 'movies.dat'),
+    index_file(es, os.path.join(args.lens, 'movies.dat'),
                 ("MovieID", "Title", "Genres"), 'movies', 'movie',
                 extract_titles)
     sys.stdout.write("Generating + Indexing 'users', ")
     # this will also geerate the 'users' index
-    index_file(conn, os.path.join(args.lens,'ratings.dat'),
+    index_file(es, os.path.join(args.lens,'ratings.dat'),
             ("UserID", "MovieID", "Rating", "Timestamp"), 'ratings', 'rating',
                 gen_users_and_append_titles)
-    index_file(conn, os.path.join(args.lens,'tags.dat'),
+    index_file(es, os.path.join(args.lens,'tags.dat'),
             ("UserID", "MovieID", "Tag", "Timestamp"), 'tags', 'tag')
 
     # Write the last user document
