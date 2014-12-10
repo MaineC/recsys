@@ -168,8 +168,8 @@ def index_file(conn, fname, field_types, index, doctype,
     print ""
 
 
-def reset_indices(conn):
-    """Delete / re-create indices, create mappings.
+def delete_indices(conn):
+    """Delete indices, create mappings.
 
        Arguments
        conn -- ES connection object
@@ -182,6 +182,12 @@ def reset_indices(conn):
     except:
         pass
 
+def reset_indices(conn):
+    """Re-create indices, create mappings.
+
+       Arguments
+       conn -- ES connection object
+    """
     conn.indices.create_index('movies')
     conn.indices.create_index('tags')
     conn.indices.create_index('ratings')
@@ -264,12 +270,14 @@ if __name__ == "__main__":
         """
     args = cmdl_args()
 
-    conn = ES('http://127.0.0.1:9200', bulker_class=models.ListBulker)
+    conn = ES('http://127.0.0.1:9201', bulker_class=models.ListBulker)
 
     if args.clear == 'true':
-        reset_indices(conn)
+        delete_indices(conn)
         if args.clearonly == 'true':
             sys.exit()
+
+    reset_indices(conn)
 
     # Generate "users" index w/ movies rated per user
     #  This index is generated on the fly when parsing 'ratings.dat'
@@ -281,7 +289,7 @@ if __name__ == "__main__":
     users_header = '{"index": {"_index": "users", "_type": "user"}}'
     users_bulk = 500
     users_q = Queue(50)
-    users_conn = ES('http://127.0.0.1:9200', bulker_class=models.ListBulker)
+    users_conn = ES('http://127.0.0.1:9201', bulker_class=models.ListBulker)
     users_conn.bulk_size = 1
     users_t = Thread(target=index_writer,
                      args=(users_conn, users_q, "users", "user"))
