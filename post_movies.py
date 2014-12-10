@@ -270,7 +270,7 @@ if __name__ == "__main__":
         """
     args = cmdl_args()
 
-    conn = ES('http://127.0.0.1:9201', bulker_class=models.ListBulker)
+    conn = ES('http://127.0.0.1:9200', bulker_class=models.ListBulker)
 
     if args.clear == 'true':
         delete_indices(conn)
@@ -289,7 +289,7 @@ if __name__ == "__main__":
     users_header = '{"index": {"_index": "users", "_type": "user"}}'
     users_bulk = 500
     users_q = Queue(50)
-    users_conn = ES('http://127.0.0.1:9201', bulker_class=models.ListBulker)
+    users_conn = ES('http://127.0.0.1:9200', bulker_class=models.ListBulker)
     users_conn.bulk_size = 1
     users_t = Thread(target=index_writer,
                      args=(users_conn, users_q, "users", "user"))
