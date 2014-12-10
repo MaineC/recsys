@@ -36,7 +36,7 @@ def index_writer(es, q, bulk):
        intended to run in a separate thread.
 
        Arguments:
-       es    -- elasticsearch connection instance to index data into
+       es    -- elasticsearch client instance to index data into
        q     -- Queue instance to read from
     """
     while True:
@@ -115,7 +115,7 @@ def index(es, datadir, tag_names, qlen=50, lines_per_bulk=1000):
         elastisearch in a separate thread.
 
        Arguments:
-       es        -- pyes 'es' instance to index data into
+       es        -- elastisearch client instance to index data into
        fname       -- data directory
 
        Keyword arguments:
