@@ -260,6 +260,9 @@ if __name__ == "__main__":
             sys.exit()
     es.indices.create(index='movie_details', ignore=400)
 
+    details_mapping = {'year': {'boost': 1.0, 'type': 'integer'}}
+    es.indices.put_mapping("movie_detail", {'movie_detail': {'properties':details_mapping}}, "movie_details")
+
     sys.stdout.write("Parsing tags..."); sys.stdout.flush()
     tags, skipped = parse_tags(args.datadir, "tags.dat")
     sys.stdout.write("Done, skipped %s lines.\n" % (len(skipped) - 1))
